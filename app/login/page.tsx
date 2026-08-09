@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useRouter } from 'next/navigation';
+import { ProfileInput } from '../../lib/users';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -10,6 +11,9 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isSignUp, setIsSignUp] = useState(false);
+  const [profile, setProfile] = useState<ProfileInput>({
+    first_name: '', last_name: '', midd_name: '', role: 'user', phone: '', address: '', birth_date: '',
+  });
   const router = useRouter();
 
   const handleAuth = async (e: React.FormEvent) => {
@@ -19,13 +23,17 @@ export default function LoginPage() {
 
     try {
       if (isSignUp) {
-        const { error } = await supabase.auth.signUp({ email, password });
+        const { error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: { data: { profile } },
+        });
         if (error) throw error;
-        alert('Check your email for confirmation link or try logging in!');
+        alert('Account created. Confirm your email, then log in to finish creating your profile.');
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
-        router.push('/dashboard');
+        router.push('/user/dashboard');
       }
     } catch (err: any) {
       setErrorMsg(err.message || 'An error occurred during authentication');
@@ -48,6 +56,32 @@ export default function LoginPage() {
         )}
 
         <form onSubmit={handleAuth} className="space-y-4">
+          {isSignUp && (
+            <>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <Field label="First name" required value={profile.first_name} onChange={(value) => setProfile({ ...profile, first_name: value })} />
+                <Field label="Last name" required value={profile.last_name} onChange={(value) => setProfile({ ...profile, last_name: value })} />
+              </div>
+              <Field label="Middle name" value={profile.midd_name ?? ''} onChange={(value) => setProfile({ ...profile, midd_name: value })} />
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <Field label="Phone" value={profile.phone} onChange={(value) => setProfile({ ...profile, phone: value })} />
+                <Field label="Birth date" type="date" value={profile.birth_date ?? ''} onChange={(value) => setProfile({ ...profile, birth_date: value })} />
+              </div>
+              <Field label="Address" value={profile.address} onChange={(value) => setProfile({ ...profile, address: value })} />
+              <div>
+                <label className="block text-sm font-medium mb-1">Role</label>
+                <select
+                  value={profile.role}
+                  onChange={(event) => setProfile({ ...profile, role: event.target.value })}
+                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white focus:outline-none focus:border-blue-500"
+                >
+                  <option value="user">User</option>
+                  <option value="admin" disabled>Admin (assigned by an administrator)</option>
+                </select>
+                <p className="mt-1 text-xs text-gray-400">New accounts start as users. Promote an account from the admin dashboard.</p>
+              </div>
+            </>
+          )}
           <div>
             <label className="block text-sm font-medium mb-1">Email Address</label>
             <input
@@ -91,7 +125,29 @@ export default function LoginPage() {
             {isSignUp ? 'Log In' : 'Sign Up'}
           </button>
         </div>
+
+        <div className="mt-4 text-center text-sm">
+          <button
+            type="button"
+            onClick={() => router.push('/user/dashboard')}
+            className="text-blue-400 hover:underline font-medium"
+          >
+            Go to Home
+          </button>
+        </div>
       </div>
+    </div>
+  );
+}
+
+function Field({ label, value, onChange, required, type = 'text' }: {
+  label: string; value: string; onChange: (value: string) => void; required?: boolean; type?: string;
+}) {
+  return (
+    <div>
+      <label className="block text-sm font-medium mb-1">{label}</label>
+      <input type={type} required={required} value={value} onChange={(event) => onChange(event.target.value)}
+        className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white focus:outline-none focus:border-blue-500" />
     </div>
   );
 }
